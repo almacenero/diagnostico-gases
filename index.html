@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Diagnóstico de Gases</title>
+  <meta name="description" content="Traduce las mediciones del analizador de gases en un diagnóstico detallado del vehículo.">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Diag. Gases">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="icons/icon-192.png" alt="" width="36" height="36">
+      <div>
+        <h1>Diagnóstico de Gases</h1>
+        <p id="taller-label" class="muted"></p>
+      </div>
+    </div>
+    <button id="install-btn" class="btn btn-light" hidden>Instalar app</button>
+  </header>
+
+  <main>
+    <p id="ios-hint" class="notice" hidden>
+      Para instalar en iPhone: toque <strong>Compartir</strong> y luego <strong>Agregar a inicio</strong>.
+    </p>
+
+    <form id="form" class="card" autocomplete="off">
+      <h2>Datos del vehículo</h2>
+      <div class="grid grid-3">
+        <label>Placa<input name="placa" placeholder="ABC-1234"></label>
+        <label>Marca / modelo<input name="modelo" placeholder="Chevrolet Aveo"></label>
+        <label>Kilometraje<input name="km" inputmode="numeric" placeholder="120000"></label>
+      </div>
+
+      <h2>Lecturas del analizador</h2>
+      <div id="gases" class="grid grid-3"></div>
+      <label>Códigos del reporte
+        <input name="codigos" placeholder="Ej: E01, E02" autocapitalize="characters">
+      </label>
+
+      <div class="actions">
+        <button type="submit" class="btn">Diagnosticar</button>
+        <button type="reset" class="btn btn-ghost">Limpiar</button>
+      </div>
+    </form>
+
+    <section id="report" class="card" hidden aria-live="polite">
+      <div class="report-head">
+        <h2>Resultado del diagnóstico</h2>
+        <p id="report-meta" class="muted"></p>
+      </div>
+      <div id="report-values" class="values"></div>
+      <div id="results"></div>
+      <div class="actions no-print">
+        <button id="print-btn" class="btn">Imprimir / PDF</button>
+        <button id="share-btn" class="btn btn-ghost">Compartir</button>
+      </div>
+      <p class="disclaimer">Diagnóstico orientativo generado a partir de reglas configurables. Confirme con una inspección mecánica.</p>
+    </section>
+
+    <details class="card no-print" id="rules-panel">
+      <summary><h2>Reglas y configuración</h2></summary>
+      <p id="rules-status" class="muted"></p>
+      <div class="actions">
+        <label class="btn">Cargar reglas (Excel)
+          <input id="rules-file" type="file" accept=".xlsx,.xls,.csv" hidden>
+        </label>
+        <button id="download-btn" class="btn btn-ghost" type="button">Descargar plantilla</button>
+        <button id="reset-rules-btn" class="btn btn-ghost" type="button">Restaurar ejemplos</button>
+      </div>
+      <div id="rules-errors" class="notice notice-warn" hidden></div>
+      <label>Nombre del taller (aparece en el reporte)
+        <input id="taller-input" placeholder="Taller Santiago">
+      </label>
+      <div id="rules-list" class="rules-list"></div>
+    </details>
+  </main>
+
+  <footer class="no-print muted">Funciona sin conexión · <span id="version"></span></footer>
+
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
