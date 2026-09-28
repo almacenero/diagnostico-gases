@@ -1,10 +1,12 @@
-// Precache de todo el sitio: la app funciona 100% sin conexión.
-// Estrategia stale-while-revalidate: responde desde caché al instante y, si hay
-// internet, actualiza la caché en segundo plano (la próxima apertura ya trae la
-// versión nueva). Cambiar CACHE solo si se agregan o quitan archivos de ASSETS.
-// Las descargas usan cache: 'no-cache' para saltarse la caché HTTP del
-// navegador; si no, podría mezclar archivos de versiones distintas.
-const CACHE = 'diagnostico-gases-v1.1.0';
+// Funcionamiento sin conexión con actualizaciones atómicas: cada versión se
+// guarda completa en su propia caché y reemplaza a la anterior solo cuando
+// terminó de descargarse, así nunca se mezclan archivos de versiones distintas.
+//
+// CACHE lleva un hash del contenido de ASSETS y lo actualiza
+// `npm run release` (npm test falla si quedó desactualizado). Al publicar un
+// sw.js distinto, el navegador instala la versión nueva; se usa desde la
+// siguiente apertura de la app.
+const CACHE = 'diagnostico-gases-03a50ebff5';
 const ASSETS = [
   './',
   'index.html',
@@ -13,6 +15,8 @@ const ASSETS = [
   'js/engine.js',
   'js/rules.js',
   'js/template.js',
+  'js/license.js',
+  'js/license-key.js',
   'vendor/xlsx.full.min.js',
   'manifest.webmanifest',
   'icons/icon-192.png',
@@ -23,7 +27,8 @@ const ASSETS = [
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE)
-    .then((c) => c.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' })))).then(() => self.skipWaiting()));
+    .then((c) => c.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -36,21 +41,9 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(caches.open(CACHE).then(async (cache) => {
-    const hit = await cache.match(e.request, { ignoreSearch: true });
-    const sameOrigin = new URL(e.request.url).origin === self.location.origin;
-    const update = fetch(e.request, sameOrigin ? { cache: 'no-cache' } : undefined)
-      .then((res) => {
-        if (res.ok && sameOrigin) {
-          cache.put(e.request, res.clone());
-        }
-        return res;
-      })
-      .catch(() => hit || Response.error());
-    if (hit) {
-      e.waitUntil(update);
-      return hit;
-    }
-    return update;
-  }));
+  // El estado de licencias siempre va a la red: nunca se sirve desde caché.
+  if (new URL(e.request.url).pathname.includes('/licencias/')) return;
+  e.respondWith(caches.open(CACHE)
+    .then((c) => c.match(e.request, { ignoreSearch: true }))
+    .then((hit) => hit || fetch(e.request)));
 });

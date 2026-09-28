@@ -27,10 +27,27 @@
   </header>
 
   <main>
+    <section id="lock" class="card lock" hidden>
+      <h2 id="lock-title">Licencia requerida</h2>
+      <p id="lock-msg"></p>
+      <label>Código de licencia
+        <textarea id="lock-code" rows="3" placeholder="Pegue aquí el código que le envió su proveedor"></textarea>
+      </label>
+      <div class="actions">
+        <button id="lock-activate" class="btn" type="button">Activar</button>
+        <button id="lock-retry" class="btn btn-ghost" type="button">Reintentar</button>
+      </div>
+      <p id="lock-error" class="notice notice-warn" hidden></p>
+      <p class="muted">Sus reglas y configuración se conservan.</p>
+    </section>
+
+    <p id="lic-banner" class="notice notice-warn no-print" hidden></p>
+
     <p id="ios-hint" class="notice" hidden>
       Para instalar en iPhone: toque <strong>Compartir</strong> y luego <strong>Agregar a inicio</strong>.
     </p>
 
+    <div id="app-content" hidden>
     <form id="form" class="card" autocomplete="off">
       <h2>Datos del vehículo</h2>
       <div class="grid grid-3">
@@ -85,6 +102,7 @@
       </label>
       <div id="rules-list" class="rules-list"></div>
     </details>
+    </div>
   </main>
 
   <footer class="no-print muted">Funciona sin conexión · <span id="version"></span></footer>

@@ -1,3 +1,5 @@
 node_modules/
 .DS_Store
 .playwright-mcp/
+# Clave privada de licencias y registro de emitidas: NUNCA subir a git
+.licencias/

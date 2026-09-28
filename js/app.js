@@ -1,8 +1,9 @@
 import { COMBUSTIBLES, DEFAULT_RULES, GASES } from './rules.js';
 import { calcLambda, diagnose, readRulesFile, toNumber, toRuleUnit } from './engine.js';
+import { activate, checkLicense } from './license.js';
 import { buildWorkbook } from './template.js';
 
-const VERSION = 'v1.1.0';
+const VERSION = 'v1.2.0';
 const STORE = { rules: 'dg.rules', meta: 'dg.rulesMeta', taller: 'dg.taller', prefs: 'dg.prefs' };
 
 const $ = (sel) => document.querySelector(sel);
@@ -227,6 +228,85 @@ function renderTaller() {
   $('#taller-input').value = taller;
 }
 
+// ---- Licencia ----
+
+const fmtDate = (iso) => new Date(`${iso}T12:00`).toLocaleDateString('es-EC', { dateStyle: 'long' });
+
+const LOCK_TEXT = {
+  'sin-licencia': ['Licencia requerida',
+    () => 'Esta aplicación necesita un código de licencia. Solicítelo a su proveedor.'],
+  vencida: ['Demostración finalizada',
+    (l) => `La licencia venció el ${fmtDate(l.exp)}. Contacte a su proveedor para seguir usando la aplicación.`],
+  revocada: ['Licencia suspendida',
+    () => 'Esta licencia fue suspendida. Contacte a su proveedor.'],
+  'sin-conexion': ['Validación pendiente',
+    (l) => `Conéctese a internet para validar la licencia (se requiere al menos cada ${l.g} días) y toque "Reintentar".`],
+};
+
+function showLockError(msg) {
+  $('#lock-error').hidden = !msg;
+  $('#lock-error').textContent = msg || '';
+}
+
+function applyLicense(result) {
+  $('#lock').hidden = result.ok;
+  $('#app-content').hidden = !result.ok;
+  const banner = $('#lic-banner');
+  banner.hidden = true;
+  if (!result.ok) {
+    const [title, msg] = LOCK_TEXT[result.reason];
+    $('#lock-title').textContent = title;
+    $('#lock-msg').textContent = msg(result.lic);
+    return;
+  }
+  const { lic, daysLeft } = result;
+  if (lic.t === 'demo' || (daysLeft != null && daysLeft <= 7)) {
+    const tipo = lic.t === 'demo' ? 'Versión de demostración' : 'Licencia';
+    const dias = daysLeft === 1 ? '1 día' : `${daysLeft} días`;
+    banner.textContent = lic.exp
+      ? `${tipo} para ${lic.c} · vence el ${fmtDate(lic.exp)} (quedan ${dias})`
+      : `${tipo} para ${lic.c}`;
+    banner.hidden = false;
+  }
+}
+
+let lastLicenseCheck = 0;
+async function refreshLicense() {
+  lastLicenseCheck = Date.now();
+  applyLicense(await checkLicense());
+}
+
+// Enlace de activación: ...#lic=<código>. Devuelve true si traía un código.
+async function consumeLicenseLink() {
+  const m = location.hash.match(/lic=([\w.-]+)/);
+  if (!m) return false;
+  history.replaceState(null, '', location.pathname + location.search);
+  showLockError((await activate(m[1])) ? '' : 'El enlace de activación no es válido.');
+  return true;
+}
+
+async function startLicense() {
+  await consumeLicenseLink();
+  await refreshLicense();
+  window.addEventListener('hashchange', async () => {
+    if (await consumeLicenseLink()) await refreshLicense();
+  });
+  $('#lock-activate').addEventListener('click', async () => {
+    if (!(await activate($('#lock-code').value))) {
+      showLockError('Código no válido. Revise que lo haya copiado completo.');
+      return;
+    }
+    showLockError('');
+    $('#lock-code').value = '';
+    await refreshLicense();
+  });
+  $('#lock-retry').addEventListener('click', refreshLicense);
+  window.addEventListener('online', refreshLicense);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && Date.now() - lastLicenseCheck > 10 * 60000) refreshLicense();
+  });
+}
+
 // ---- Instalación ----
 
 function setupInstall() {
@@ -260,6 +340,7 @@ previewLambda();
 renderRules();
 renderTaller();
 setupInstall();
+startLicense();
 $('#version').textContent = VERSION;
 
 $('#form').addEventListener('submit', (e) => {

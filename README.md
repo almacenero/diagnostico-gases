@@ -66,6 +66,34 @@ Las 10 reglas incluidas son **referenciales** (gasolina, ralentí, motor calient
 Las reglas `E01` y `E02` son códigos de ejemplo: hay que reemplazarlas por los
 códigos reales que imprime el equipo.
 
+## Licencias
+
+La app no funciona sin una licencia firmada. Las licencias se emiten desde esta
+carpeta con la clave privada `.licencias/privada.pem`, que **nunca se sube a git**
+(está en `.gitignore`). **Haga un respaldo de ese archivo:** sin él no se pueden
+emitir licencias nuevas.
+
+```bash
+npm run licencia -- emitir --cliente "Nombre"              # demo: 15 días, validar en línea cada 3 días
+npm run licencia -- emitir --cliente "Nombre" --dias 30    # demo de otra duración
+npm run licencia -- emitir --cliente "Nombre" --tipo full  # licencia pagada: sin vencimiento, validar cada 30 días
+npm run licencia -- listar                                 # licencias emitidas y su estado
+npm run licencia -- revocar L-XXXXXXXX                     # bloquear (luego: git commit + git push)
+npm run licencia -- restaurar L-XXXXXXXX                   # desbloquear (luego: git commit + git push)
+```
+
+- `emitir` imprime un **enlace de activación** (para enviar por WhatsApp) y el **código**.
+  En iPhone, si la app ya está instalada en la pantalla de inicio, se debe pegar el
+  código en la pantalla de licencia (Safari y la app instalada no comparten datos).
+- **Demo:** se muestra un aviso con la fecha de vencimiento; al vencer, la app se bloquea.
+- **Bloqueo remoto:** `revocar` agrega la licencia a `licencias/estado.json`; al publicarlo,
+  la app se bloquea la próxima vez que el dispositivo se conecte.
+- Si la app pasa más días sin conexión que los de gracia, pide internet para validarse.
+  Atrasar el reloj del dispositivo no evita el vencimiento.
+- El bloqueo **no borra** las reglas ni la configuración del cliente.
+- Es una protección contra el uso sin pago por parte de un usuario común; como toda app web,
+  un programador con acceso al código podría quitarla.
+
 ## Desarrollo
 
 Sitio estático sin paso de compilación (HTML + JS módulos + SheetJS local).
@@ -75,12 +103,15 @@ npm install
 npm start              # http://localhost:5173
 npm test               # pruebas del motor de reglas
 npm run build:template # regenera plantilla/reglas_ejemplo.xlsx desde js/rules.js
+npm run release        # antes de publicar: regenera la plantilla y la versión de caché de sw.js
 ```
 
 - `js/rules.js` — reglas por defecto y columnas del Excel
 - `js/engine.js` — lectura del Excel y evaluación de reglas
 - `js/app.js` — interfaz
-- `sw.js` — funcionamiento sin conexión (si se agregan archivos, añadirlos a `ASSETS` y subir `CACHE`)
+- `js/license.js` — verificación de licencias; `scripts/licencia.mjs` — emisión y revocación
+- `sw.js` — funcionamiento sin conexión (si se agregan archivos, añadirlos a `ASSETS`)
 
-Cada `git push` a `main` publica la nueva versión en GitHub Pages; las apps
-instaladas se actualizan solas la próxima vez que se abren con internet.
+Para publicar: `npm run release`, `npm test`, commit y `git push` a `main`. Las apps
+instaladas descargan la versión nueva completa en segundo plano y la usan desde la
+siguiente apertura.
