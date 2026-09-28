@@ -2,7 +2,9 @@
 // Estrategia stale-while-revalidate: responde desde caché al instante y, si hay
 // internet, actualiza la caché en segundo plano (la próxima apertura ya trae la
 // versión nueva). Cambiar CACHE solo si se agregan o quitan archivos de ASSETS.
-const CACHE = 'diagnostico-gases-v1.0.0';
+// Las descargas usan cache: 'no-cache' para saltarse la caché HTTP del
+// navegador; si no, podría mezclar archivos de versiones distintas.
+const CACHE = 'diagnostico-gases-v1.1.0';
 const ASSETS = [
   './',
   'index.html',
@@ -20,7 +22,8 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE)
+    .then((c) => c.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -35,9 +38,10 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(caches.open(CACHE).then(async (cache) => {
     const hit = await cache.match(e.request, { ignoreSearch: true });
-    const update = fetch(e.request)
+    const sameOrigin = new URL(e.request.url).origin === self.location.origin;
+    const update = fetch(e.request, sameOrigin ? { cache: 'no-cache' } : undefined)
       .then((res) => {
-        if (res.ok && new URL(e.request.url).origin === self.location.origin) {
+        if (res.ok && sameOrigin) {
           cache.put(e.request, res.clone());
         }
         return res;

@@ -40,7 +40,11 @@
       </div>
 
       <h2>Lecturas del analizador</h2>
+      <div class="grid">
+        <label>Combustible<select name="combustible" id="combustible"></select></label>
+      </div>
       <div id="gases" class="grid grid-3"></div>
+      <p class="hint muted">Si el equipo no entrega lambda, déjelo vacío: se calcula con CO, CO₂, O₂ y HC (ecuación de Brettschneider).</p>
       <label>Códigos del reporte
         <input name="codigos" placeholder="Ej: E01, E02" autocapitalize="characters">
       </label>

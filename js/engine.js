@@ -27,6 +27,26 @@ export function toNumber(value) {
 
 const normCode = (c) => String(c ?? '').trim().toUpperCase();
 
+// Convierte un valor ingresado en la unidad alternativa (ppm <-> %) a la
+// unidad de las reglas. 1 % = 10 000 ppm.
+export function toRuleUnit(gas, value, unit) {
+  if (value == null || !gas.alt || unit !== gas.alt) return value;
+  return gas.unit === '%' ? value / 10000 : value * 10000;
+}
+
+// Factor de conversión NDIR del HC: pasa ppm de n-hexano a % de carbono
+// (500 ppm × 6e-4 = 0,3 %). Se aplica al HC en ppm, no en %.
+export const K1 = 6e-4;
+
+// Ecuación de Brettschneider. CO, CO2 y O2 en % vol; HC en ppm.
+// Devuelve null si falta algún valor necesario.
+export function calcLambda({ CO, CO2, O2, HC }, { Hcv, Ocv }) {
+  if ([CO, CO2, O2, HC].some((v) => v == null) || CO2 <= 0) return null;
+  const num = CO2 + CO / 2 + O2 + ((Hcv / 4) * (3.5 / (3.5 + CO / CO2)) - Ocv / 2) * (CO2 + CO);
+  const den = (1 + Hcv / 4 - Ocv / 2) * (CO2 + CO + K1 * HC);
+  return num / den;
+}
+
 // Convierte filas crudas (del Excel) en reglas válidas. Devuelve también los
 // errores por fila para mostrárselos al usuario.
 export function normalizeRules(rows, sheetName = 'Reglas') {

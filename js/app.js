@@ -1,9 +1,9 @@
-import { DEFAULT_RULES, GASES } from './rules.js';
-import { diagnose, readRulesFile, toNumber } from './engine.js';
+import { COMBUSTIBLES, DEFAULT_RULES, GASES } from './rules.js';
+import { calcLambda, diagnose, readRulesFile, toNumber, toRuleUnit } from './engine.js';
 import { buildWorkbook } from './template.js';
 
-const VERSION = 'v1.0.0';
-const STORE = { rules: 'dg.rules', meta: 'dg.rulesMeta', taller: 'dg.taller' };
+const VERSION = 'v1.1.0';
+const STORE = { rules: 'dg.rules', meta: 'dg.rulesMeta', taller: 'dg.taller', prefs: 'dg.prefs' };
 
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
@@ -29,18 +29,54 @@ let rulesMeta = load(STORE.meta, null) || { source: 'Reglas de ejemplo', date: n
 // ---- Formulario ----
 
 function renderGasInputs() {
-  $('#gases').innerHTML = GASES.map((g) => `
-    <label><span>${g.label} ${g.unit ? `<span class="unit">(${g.unit})</span>` : ''}</span>
-      <input name="${g.key}" inputmode="decimal" step="${g.step}" placeholder="—">
-    </label>`).join('');
+  $('#combustible').innerHTML = COMBUSTIBLES.map((c) => `<option value="${c.key}">${c.label}</option>`).join('');
+  $('#gases').innerHTML = GASES.map((g) => {
+    const unit = g.alt
+      ? `<select name="${g.key}_unit" aria-label="Unidad de ${g.label}">
+          <option>${g.unit}</option><option>${g.alt}</option></select>`
+      : g.unit && `<span class="unit">(${g.unit})</span>`;
+    return `
+    <div class="field">
+      <div class="field-head"><label for="g-${g.key}">${g.label}</label> ${unit || ''}</div>
+      <input id="g-${g.key}" name="${g.key}" inputmode="decimal" placeholder="—">
+    </div>`;
+  }).join('');
+}
+
+// Combustible y unidades elegidas se recuerdan entre usos.
+const PREF_FIELDS = ['combustible', ...GASES.filter((g) => g.alt).map((g) => `${g.key}_unit`)];
+
+function applyPrefs() {
+  const prefs = load(STORE.prefs, {});
+  for (const name of PREF_FIELDS) {
+    const el = $('#form').elements[name];
+    if (prefs[name] && [...el.options].some((o) => o.value === prefs[name])) el.value = prefs[name];
+  }
+}
+
+function savePrefs() {
+  const els = $('#form').elements;
+  save(STORE.prefs, Object.fromEntries(PREF_FIELDS.map((n) => [n, els[n].value])));
 }
 
 function readForm() {
   const fd = new FormData($('#form'));
   const values = {};
-  for (const g of GASES) values[g.key] = toNumber(fd.get(g.key));
+  for (const g of GASES) values[g.key] = toRuleUnit(g, toNumber(fd.get(g.key)), fd.get(`${g.key}_unit`));
+  const combustible = COMBUSTIBLES.find((c) => c.key === fd.get('combustible')) || COMBUSTIBLES[0];
+  // Si el equipo no entrega lambda, se calcula con la ecuación de Brettschneider.
+  let lambdaCalculado = false;
+  if (values.Lambda == null) {
+    const lambda = calcLambda(values, combustible);
+    if (lambda != null) {
+      values.Lambda = Math.round(lambda * 1000) / 1000;
+      lambdaCalculado = true;
+    }
+  }
   return {
     values,
+    combustible,
+    lambdaCalculado,
     codigos: String(fd.get('codigos') || ''),
     placa: String(fd.get('placa') || '').trim(),
     modelo: String(fd.get('modelo') || '').trim(),
@@ -50,15 +86,23 @@ function readForm() {
 
 let lastReport = null;
 
+function previewLambda() {
+  const el = $('#form').elements.Lambda;
+  const { values, lambdaCalculado } = readForm();
+  el.placeholder = lambdaCalculado ? `${values.Lambda} (calculado)` : 'Se calcula solo';
+}
+
 function renderReport(input) {
   const { found, unknownCodes } = diagnose(rules, input.values, input.codigos);
   const fecha = new Date().toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' });
-  const meta = [input.placa && `Placa ${input.placa}`, input.modelo, input.km && `${input.km} km`, fecha]
+  const meta = [input.placa && `Placa ${input.placa}`, input.modelo, input.km && `${input.km} km`,
+    input.combustible.label, fecha]
     .filter(Boolean).join(' · ');
   $('#report-meta').textContent = meta;
 
   const chips = GASES.filter((g) => input.values[g.key] != null)
-    .map((g) => `<span class="chip">${g.label}: <strong>${input.values[g.key]}</strong> ${g.unit}</span>`);
+    .map((g) => `<span class="chip">${g.label}: <strong>${input.values[g.key]}</strong> ${g.unit}${
+      g.key === 'Lambda' && input.lambdaCalculado ? ' (calculado)' : ''}</span>`);
   const codes = input.codigos.trim();
   if (codes) chips.push(`<span class="chip">Códigos: <strong>${esc(codes.toUpperCase())}</strong></span>`);
   $('#report-values').innerHTML = chips.join('');
@@ -87,7 +131,8 @@ function reportAsText() {
   const taller = load(STORE.taller, '');
   const lines = [`*Diagnóstico de gases*${taller ? ` — ${taller}` : ''}`, meta, ''];
   const vals = GASES.filter((g) => input.values[g.key] != null)
-    .map((g) => `${g.key}: ${input.values[g.key]} ${g.unit}`.trim());
+    .map((g) => `${g.key}: ${input.values[g.key]} ${g.unit}${
+      g.key === 'Lambda' && input.lambdaCalculado ? ' (calculado)' : ''}`.trim());
   if (vals.length) lines.push(vals.join(' | '), '');
   for (const r of found) {
     lines.push(`• ${r.diagnostico} (${r.severidad})`);
@@ -210,6 +255,8 @@ function setupInstall() {
 // ---- Inicio ----
 
 renderGasInputs();
+applyPrefs();
+previewLambda();
 renderRules();
 renderTaller();
 setupInstall();
@@ -224,7 +271,16 @@ $('#form').addEventListener('submit', (e) => {
   }
   renderReport(input);
 });
-$('#form').addEventListener('reset', () => { $('#report').hidden = true; lastReport = null; });
+$('#form').addEventListener('reset', () => {
+  $('#report').hidden = true;
+  lastReport = null;
+  setTimeout(() => { applyPrefs(); previewLambda(); });
+});
+$('#form').addEventListener('input', previewLambda);
+$('#form').addEventListener('change', (e) => {
+  if (PREF_FIELDS.includes(e.target.name)) savePrefs();
+  previewLambda();
+});
 $('#print-btn').addEventListener('click', () => window.print());
 $('#share-btn').addEventListener('click', share);
 $('#rules-file').addEventListener('change', onRulesFile);

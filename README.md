@@ -21,6 +21,26 @@ taller se guardan en el dispositivo y se mantienen aunque se reinicie el equipo.
 2. Tocar **Diagnosticar**.
 3. **Imprimir / PDF** o **Compartir** (WhatsApp, correo, etc.).
 
+## Cálculo de lambda (λ)
+
+Si el equipo no entrega lambda, se deja vacío y la app lo calcula con la
+**ecuación de Brettschneider** a partir de CO, CO₂, O₂ y HC:
+
+```
+       [CO2] + [CO]/2 + [O2] + (Hcv/4 · 3.5/(3.5 + [CO]/[CO2]) − Ocv/2) · ([CO2] + [CO])
+λ = ─────────────────────────────────────────────────────────────────────────────────
+                   (1 + Hcv/4 − Ocv/2) · ([CO2] + [CO] + K1 · [HC])
+```
+
+- CO, CO₂ y O₂ en % vol; **HC en ppm**; K1 = 6×10⁻⁴ (500 ppm × K1 = 0,3 % de carbono).
+- Hcv / Ocv según el combustible elegido: Gasolina 1,85 / 0 · E10 1,85 / 0,03 · GLP 2,52 / 0 · GNC 4,00 / 0.
+- CO y HC se pueden ingresar en ppm o en %; la app convierte a la unidad de las reglas
+  (CO en %, HC en ppm). El combustible y las unidades elegidas se recuerdan.
+- Si se ingresa lambda a mano, se usa ese valor.
+
+Ejemplo del Excel del cliente (CO₂ 7 %, O₂ 5 %, CO 250 ppm, HC 500 ppm, gasolina): **λ = 1,424**.
+El Excel original daba 1,485 porque aplicaba K1 al HC en % en lugar de ppm.
+
 ## Reglas de diagnóstico (Excel)
 
 El taller mantiene sus propias reglas en Excel, sin programar:

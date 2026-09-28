@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as XLSX from 'xlsx';
-import { DEFAULT_RULES } from '../js/rules.js';
-import { diagnose, normalizeRules, toNumber } from '../js/engine.js';
+import { COMBUSTIBLES, DEFAULT_RULES, GASES } from '../js/rules.js';
+import { calcLambda, diagnose, normalizeRules, toNumber, toRuleUnit } from '../js/engine.js';
 
 const ids = (r) => r.found.map((x) => x.id);
 
@@ -80,4 +80,37 @@ test('un Excel que no es la plantilla de reglas da un error claro', () => {
 
 test('plantilla vacía (solo encabezados) no es un error de formato', () => {
   assert.deepEqual(normalizeRules([]), { rules: [], errors: [] });
+});
+
+const gasolina = COMBUSTIBLES.find((c) => c.key === 'gasolina');
+const gas = (k) => GASES.find((g) => g.key === k);
+
+test('lambda corregido con el ejemplo del Excel del cliente (HC en ppm)', () => {
+  // CO2 7 %, O2 5 %, CO 250 ppm = 0,025 %, HC 500 ppm. El Excel original daba 1,485.
+  const l = calcLambda({ CO2: 7, O2: 5, CO: 0.025, HC: 500 }, gasolina);
+  assert.equal(l.toFixed(4), '1.4243');
+});
+
+test('lambda ≈ 1 en una combustión estequiométrica típica', () => {
+  const l = calcLambda({ CO2: 14.8, O2: 0.3, CO: 0.4, HC: 80 }, gasolina);
+  assert.ok(l > 0.97 && l < 1.03, `lambda=${l}`);
+});
+
+test('lambda: faltan datos o CO2 = 0 -> null', () => {
+  assert.equal(calcLambda({ CO2: 7, O2: 5, CO: 0.025 }, gasolina), null);
+  assert.equal(calcLambda({ CO2: 0, O2: 5, CO: 0.025, HC: 500 }, gasolina), null);
+});
+
+test('conversión de unidades ppm <-> %', () => {
+  assert.equal(toRuleUnit(gas('CO'), 250, 'ppm'), 0.025);
+  assert.equal(toRuleUnit(gas('CO'), 0.5, '%'), 0.5);
+  assert.equal(toRuleUnit(gas('HC'), 0.05, '%'), 500);
+  assert.equal(toRuleUnit(gas('HC'), 500, 'ppm'), 500);
+  assert.equal(toRuleUnit(gas('O2'), 5, undefined), 5);
+});
+
+test('con lambda calculado se activan las reglas que dependen de lambda', () => {
+  const values = { CO2: 14.8, O2: 0.3, CO: 0.4, HC: 80 };
+  values.Lambda = calcLambda(values, gasolina);
+  assert.deepEqual(diagnose(DEFAULT_RULES, values, '').found.map((r) => r.id), ['R01']);
 });

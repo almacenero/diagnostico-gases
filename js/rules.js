@@ -1,12 +1,22 @@
 // Parámetros medidos por el analizador. `key` es el prefijo de las columnas
-// <key>_min / <key>_max en el Excel de reglas.
+// <key>_min / <key>_max en el Excel de reglas, siempre en la unidad `unit`.
+// `alt` es una unidad alternativa en la que se puede ingresar el valor.
 export const GASES = [
-  { key: 'CO', label: 'CO', unit: '%', step: '0.01' },
-  { key: 'HC', label: 'HC', unit: 'ppm', step: '1' },
-  { key: 'CO2', label: 'CO₂', unit: '%', step: '0.1' },
-  { key: 'O2', label: 'O₂', unit: '%', step: '0.01' },
-  { key: 'NOx', label: 'NOx', unit: 'ppm', step: '1' },
-  { key: 'Lambda', label: 'Lambda (λ)', unit: '', step: '0.001' },
+  { key: 'CO', label: 'CO', unit: '%', alt: 'ppm' },
+  { key: 'HC', label: 'HC', unit: 'ppm', alt: '%' },
+  { key: 'CO2', label: 'CO₂', unit: '%' },
+  { key: 'O2', label: 'O₂', unit: '%' },
+  { key: 'NOx', label: 'NOx', unit: 'ppm' },
+  { key: 'Lambda', label: 'Lambda (λ)', unit: '' },
+];
+
+// Constantes de la ecuación de Brettschneider por combustible.
+// Hcv: relación hidrógeno/carbono. Ocv: relación oxígeno/carbono.
+export const COMBUSTIBLES = [
+  { key: 'gasolina', label: 'Gasolina', Hcv: 1.85, Ocv: 0 },
+  { key: 'e10', label: 'Gasolina con etanol (E10)', Hcv: 1.85, Ocv: 0.03 },
+  { key: 'glp', label: 'GLP', Hcv: 2.52, Ocv: 0 },
+  { key: 'gnc', label: 'GNC (gas natural)', Hcv: 4.0, Ocv: 0 },
 ];
 
 export const SEVERIDADES = ['Alta', 'Media', 'Baja'];
