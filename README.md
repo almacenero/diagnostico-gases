@@ -68,6 +68,8 @@ códigos reales que imprime el equipo.
 
 ## Licencias
 
+Guía completa del proceso (demos, pagos, bloqueos, respaldo, mensajes para el cliente): **[docs/LICENCIAS.md](docs/LICENCIAS.md)**.
+
 La app no funciona sin una licencia firmada. Las licencias se emiten desde esta
 carpeta con la clave privada `.licencias/privada.pem`, que **nunca se sube a git**
 (está en `.gitignore`). **Haga un respaldo de ese archivo:** sin él no se pueden

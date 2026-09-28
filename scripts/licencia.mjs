@@ -78,7 +78,7 @@ function setRevocada(id, revocar) {
 function listar() {
   if (!fs.existsSync(LOG)) fail('No hay licencias emitidas.');
   const revocadas = new Set(readEstado().revocadas);
-  const rows = fs.readFileSync(LOG, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const rows = fs.readFileSync(LOG, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
   for (const l of rows) {
     console.log(`${l.id}  ${revocadas.has(l.id) ? 'REVOCADA' : 'activa  '}  ${l.t.padEnd(4)}  `
       + `vence: ${(l.exp || 'sin vencimiento').padEnd(16)}emitida: ${l.iat}  ${l.c}`);
