@@ -25,9 +25,16 @@ const ASSETS = [
   'plantilla/reglas_ejemplo.xlsx',
 ];
 
+// Cada archivo se descarga con ?v=<CACHE>: la CDN de GitHub Pages (que guarda
+// copias hasta 10 min tras publicar) no tiene esa URL y la pide al origen, así
+// todos los archivos llegan de la misma versión. Se guardan sin el ?v=.
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE)
-    .then((c) => c.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' }))))
+    .then((c) => Promise.all(ASSETS.map(async (url) => {
+      const res = await fetch(`${url}?v=${CACHE}`, { cache: 'reload' });
+      if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+      await c.put(url, res);
+    })))
     .then(() => self.skipWaiting()));
 });
 
