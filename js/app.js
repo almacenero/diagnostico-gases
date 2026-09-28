@@ -132,11 +132,11 @@ function renderRules() {
       <span class="cond">${esc(describeRule(r))}</span></div>`).join('');
 }
 
-function showErrors(errors) {
+function showErrors(title, errors = []) {
   const box = $('#rules-errors');
-  box.hidden = !errors.length;
-  box.innerHTML = errors.length
-    ? `Se omitieron ${errors.length} filas:<ul>${errors.slice(0, 20).map((e) => `<li>${esc(e)}</li>`).join('')}</ul>`
+  box.hidden = !title;
+  box.innerHTML = title
+    ? `${esc(title)}<ul>${errors.slice(0, 20).map((e) => `<li>${esc(e)}</li>`).join('')}</ul>`
     : '';
 }
 
@@ -147,18 +147,18 @@ async function onRulesFile(e) {
   try {
     const result = await readRulesFile(file);
     if (!result.rules.length) {
-      showErrors(result.errors.length ? result.errors : ['El archivo no contiene reglas válidas.']);
+      showErrors(`No se cargó ninguna regla de "${file.name}".`, result.errors);
       return;
     }
     rules = result.rules;
     rulesMeta = { source: file.name, date: Date.now() };
     save(STORE.rules, rules);
     save(STORE.meta, rulesMeta);
-    showErrors(result.errors);
+    showErrors(result.errors.length ? `Se omitieron ${result.errors.length} filas:` : '', result.errors);
     renderRules();
     alert(`Se cargaron ${rules.length} reglas de "${file.name}".`);
   } catch (err) {
-    showErrors([`No se pudo leer el archivo: ${err.message}`]);
+    showErrors(`No se pudo cargar "${file.name}".`, [err.message]);
   }
 }
 
@@ -172,7 +172,7 @@ function resetRules() {
   rulesMeta = { source: 'Reglas de ejemplo', date: null };
   localStorage.removeItem(STORE.rules);
   localStorage.removeItem(STORE.meta);
-  showErrors([]);
+  showErrors('');
   renderRules();
 }
 

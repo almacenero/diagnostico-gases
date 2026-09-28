@@ -29,7 +29,12 @@ const normCode = (c) => String(c ?? '').trim().toUpperCase();
 
 // Convierte filas crudas (del Excel) en reglas válidas. Devuelve también los
 // errores por fila para mostrárselos al usuario.
-export function normalizeRules(rows) {
+export function normalizeRules(rows, sheetName = 'Reglas') {
+  const headers = rows.length ? Object.keys(rows[0]) : [];
+  if (rows.length && !headers.some((h) => canonical(h) === 'diagnostico')) {
+    throw new Error(`La hoja "${sheetName}" no tiene el formato de la plantilla de reglas `
+      + '(falta la columna "diagnostico"). Use "Descargar plantilla" y copie sus reglas en ella.');
+  }
   const rules = [];
   const errors = [];
   rows.forEach((raw, i) => {
@@ -93,5 +98,5 @@ export async function readRulesFile(file) {
   const wb = XLSX.read(await file.arrayBuffer());
   const name = wb.SheetNames.find((n) => n.toLowerCase() === 'reglas') || wb.SheetNames[0];
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: null });
-  return normalizeRules(rows);
+  return normalizeRules(rows, name);
 }

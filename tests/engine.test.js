@@ -66,3 +66,18 @@ test('la plantilla Excel generada se vuelve a leer igual a las reglas por defect
     for (const [k, v] of Object.entries(def)) assert.equal(rules[i][k], v, `${def.id}.${k}`);
   }
 });
+
+test('un Excel que no es la plantilla de reglas da un error claro', () => {
+  // Misma estructura que el archivo de cálculo de lambda compartido por el cliente.
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['VALORES ENTREGADOS POR EL EQUIPO', null, null, null],
+    ['CO2 %', 7, 'O2%', 5],
+    ['CO PPM', 250, 'HC PPM', 500],
+  ]);
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+  assert.throws(() => normalizeRules(rows, 'Hoja1'), /Hoja1.*no tiene el formato.*diagnostico/);
+});
+
+test('plantilla vacía (solo encabezados) no es un error de formato', () => {
+  assert.deepEqual(normalizeRules([]), { rules: [], errors: [] });
+});
