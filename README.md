@@ -46,7 +46,7 @@ El Excel original daba 1,485 porque aplicaba K1 al HC en % en lugar de ppm.
 El taller mantiene sus propias reglas en Excel, sin programar:
 
 1. En la app: **Reglas y configuración → Descargar plantilla** (o usar
-   [`plantilla/reglas_ejemplo.xlsx`](plantilla/reglas_ejemplo.xlsx)).
+   [`plantilla/reglas_ejemplo.xlsx`](plantilla/reglas_ejemplo.xlsx), que contiene las reglas base).
 2. Editar la hoja **Reglas**. La hoja **Instrucciones** explica cada columna.
 3. En la app: **Cargar reglas (Excel)**. Las reglas nuevas reemplazan a las anteriores.
 
@@ -62,9 +62,12 @@ Una regla aplica cuando se cumplen **todas** sus condiciones llenas:
 | `causas`, `recomendacion` | Detalle para el cliente |
 | `severidad` | `Alta`, `Media` o `Baja` (orden de los resultados) |
 
-Las 10 reglas incluidas son **referenciales** (gasolina, ralentí, motor caliente).
-Las reglas `E01` y `E02` son códigos de ejemplo: hay que reemplazarlas por los
-códigos reales que imprime el equipo.
+La app trae **reglas base** para motores a gasolina en ralentí con el motor caliente
+(mezcla rica y pobre, fallas de encendido, catalizador, compresión o aceite, muestra
+diluida, NOx…), basadas en literatura técnica de análisis de gases. El fundamento,
+los rangos y las fuentes de cada una están en **[docs/REGLAS.md](docs/REGLAS.md)**.
+Varias filas con el mismo diagnóstico funcionan como alternativas ("o") y se muestran
+una sola vez. Si el equipo imprime códigos propios, se agregan filas con la columna `codigo`.
 
 ## Licencias
 

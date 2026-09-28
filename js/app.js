@@ -25,7 +25,7 @@ function save(key, value) {
 }
 
 let rules = load(STORE.rules, null) || DEFAULT_RULES;
-let rulesMeta = load(STORE.meta, null) || { source: 'Reglas de ejemplo', date: null };
+let rulesMeta = load(STORE.meta, null) || { source: 'Reglas base', date: null };
 
 // ---- Formulario ----
 
@@ -213,9 +213,9 @@ function downloadTemplate() {
 }
 
 function resetRules() {
-  if (!confirm('¿Reemplazar las reglas actuales por las reglas de ejemplo?')) return;
+  if (!confirm('¿Reemplazar las reglas actuales por las reglas base?')) return;
   rules = DEFAULT_RULES;
-  rulesMeta = { source: 'Reglas de ejemplo', date: null };
+  rulesMeta = { source: 'Reglas base', date: null };
   localStorage.removeItem(STORE.rules);
   localStorage.removeItem(STORE.meta);
   showErrors('');

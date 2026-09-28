@@ -6,7 +6,7 @@
 // `npm run release` (npm test falla si quedó desactualizado). Al publicar un
 // sw.js distinto, el navegador instala la versión nueva; se usa desde la
 // siguiente apertura de la app.
-const CACHE = 'diagnostico-gases-03a50ebff5';
+const CACHE = 'diagnostico-gases-30b336455b';
 const ASSETS = [
   './',
   'index.html',

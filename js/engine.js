@@ -106,7 +106,11 @@ function matches(rule, values, codes) {
 export function diagnose(rules, values, codesText) {
   const codes = new Set(String(codesText || '').split(/[,;\s]+/).map(normCode).filter(Boolean));
   const order = (r) => SEVERIDADES.indexOf(r.severidad);
-  const found = rules.filter((r) => matches(r, values, codes)).sort((a, b) => order(a) - order(b));
+  const seen = new Set();
+  // Filas con el mismo diagnóstico son alternativas: se muestra una sola.
+  const found = rules.filter((r) => matches(r, values, codes))
+    .filter((r) => !seen.has(r.diagnostico) && seen.add(r.diagnostico))
+    .sort((a, b) => order(a) - order(b));
   const matchedCodes = new Set(found.flatMap((r) => String(r.codigo || '').split(/[,;\s]+/).map(normCode)));
   const unknownCodes = [...codes].filter((c) => !matchedCodes.has(c));
   return { found, unknownCodes };

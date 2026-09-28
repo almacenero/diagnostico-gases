@@ -7,19 +7,36 @@ import { calcLambda, diagnose, normalizeRules, toNumber, toRuleUnit } from '../j
 
 const ids = (r) => r.found.map((x) => x.id);
 
-test('motor en buen estado -> combustión correcta', () => {
-  const r = diagnose(DEFAULT_RULES, { CO: 0.2, HC: 40, CO2: 14.8, O2: 0.4, Lambda: 1.0 }, '');
-  assert.deepEqual(ids(r), ['R01']);
-});
+// Casos típicos de ralentí (gasolina). Lambda se calcula con Brettschneider.
+const CASOS = [
+  ['motor sano', { CO: 0.2, HC: 40, CO2: 14.8, O2: 0.4 }, ['R01']],
+  ['catalizador (CO alto con λ≈1)', { CO: 0.8, HC: 120, CO2: 13.8, O2: 0.6 }, ['R02']],
+  ['catalizador (HC alto con λ≈1)', { CO: 0.3, HC: 180, CO2: 14.2, O2: 0.4 }, ['R03']],
+  ['mezcla rica', { CO: 2.0, HC: 200, CO2: 13.0, O2: 0.3 }, ['R04']],
+  ['mezcla muy rica', { CO: 4.5, HC: 400, CO2: 11.5, O2: 0.3 }, ['R05']],
+  ['mezcla pobre', { CO: 0.1, HC: 150, CO2: 12.5, O2: 3.0 }, ['R06']],
+  ['falla de encendido', { CO: 1.2, HC: 1500, CO2: 11.0, O2: 4.0 }, ['R07']],
+  ['falla por mezcla muy pobre (ejemplo del Excel del cliente)', { CO: 0.025, HC: 500, CO2: 7, O2: 5 }, ['R08']],
+  ['HC alto con mezcla normal', { CO: 0.4, HC: 450, CO2: 14.0, O2: 0.8 }, ['R09']],
+  ['CO y O2 altos a la vez', { CO: 1.5, HC: 200, CO2: 12.0, O2: 3.0 }, ['R10']],
+  ['muestra diluida (va primero por severidad)', { CO: 0.1, HC: 60, CO2: 7.0, O2: 9.0 }, ['R11', 'R06']],
+  ['CO2 bajo con λ≈1', { CO: 0.3, HC: 90, CO2: 11.0, O2: 0.3 }, ['R12']],
+  ['NOx alto en motor sano', { CO: 0.2, HC: 40, CO2: 14.8, O2: 0.4, NOx: 1500 }, ['R13', 'R01']],
+  ['ligeramente pobre', { CO: 0.6, HC: 90, CO2: 13.5, O2: 1.3 }, ['R14']],
+];
 
-test('mezcla rica', () => {
-  const r = diagnose(DEFAULT_RULES, { CO: 3.2, HC: 250, CO2: 12, O2: 0.3, Lambda: 0.88 }, '');
-  assert.deepEqual(ids(r), ['R02']);
-});
+for (const [nombre, v, esperado] of CASOS) {
+  test(`reglas base: ${nombre}`, () => {
+    const values = { ...v, Lambda: calcLambda(v, COMBUSTIBLES[0]) };
+    assert.deepEqual(ids(diagnose(DEFAULT_RULES, values, '')), esperado);
+  });
+}
 
-test('falla de encendido y mezcla pobre, ordenadas por severidad', () => {
-  const r = diagnose(DEFAULT_RULES, { CO: 0.3, HC: 800, CO2: 11, O2: 3.5, Lambda: 1.12 }, '');
-  assert.deepEqual(ids(r), ['R04', 'R03']);
+test('filas con el mismo diagnóstico se muestran una sola vez', () => {
+  // CO 0,8 y HC 150 con λ≈1 cumplen R02 y R03 (mismo diagnóstico).
+  const v = { CO: 0.8, HC: 150, CO2: 13.8, O2: 0.6 };
+  const r = diagnose(DEFAULT_RULES, { ...v, Lambda: calcLambda(v, COMBUSTIBLES[0]) }, '');
+  assert.deepEqual(r.found.map((x) => x.diagnostico), ['Catalizador con baja eficiencia']);
 });
 
 test('una regla con rango de un gas no medido no aplica', () => {
@@ -28,8 +45,9 @@ test('una regla con rango de un gas no medido no aplica', () => {
 });
 
 test('códigos: coincidencia sin distinguir mayúsculas y códigos desconocidos', () => {
-  const r = diagnose(DEFAULT_RULES, {}, 'e01, X99');
-  assert.deepEqual(ids(r), ['R09']);
+  const reglas = [{ id: 'C1', codigo: 'E01, E03', diagnostico: 'Flujo bajo', severidad: 'Media' }];
+  const r = diagnose(reglas, {}, 'e03 X99');
+  assert.deepEqual(ids(r), ['C1']);
   assert.deepEqual(r.unknownCodes, ['X99']);
 });
 
@@ -109,8 +127,7 @@ test('conversión de unidades ppm <-> %', () => {
   assert.equal(toRuleUnit(gas('O2'), 5, undefined), 5);
 });
 
-test('con lambda calculado se activan las reglas que dependen de lambda', () => {
-  const values = { CO2: 14.8, O2: 0.3, CO: 0.4, HC: 80 };
-  values.Lambda = calcLambda(values, gasolina);
-  assert.deepEqual(diagnose(DEFAULT_RULES, values, '').found.map((r) => r.id), ['R01']);
+test('sin lambda (ni calculable) no se activan las reglas que dependen de lambda', () => {
+  const r = diagnose(DEFAULT_RULES, { CO: 0.2, CO2: 14.8, O2: 0.4 }, '');
+  assert.deepEqual(ids(r), []);
 });
