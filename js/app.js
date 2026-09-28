@@ -95,7 +95,7 @@ function previewLambda() {
 
 function renderReport(input) {
   const { found, unknownCodes } = diagnose(rules, input.values, input.codigos);
-  const fecha = new Date().toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' });
+  const fecha = new Date().toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'medium' });
   const meta = [input.placa && `Placa ${input.placa}`, input.modelo, input.km && `${input.km} km`,
     input.combustible.label, fecha]
     .filter(Boolean).join(' · ');
@@ -122,8 +122,13 @@ function renderReport(input) {
     html += `<p class="notice notice-warn">Códigos sin regla definida: <strong>${esc(unknownCodes.join(', '))}</strong></p>`;
   }
   $('#results').innerHTML = html;
-  $('#report').hidden = false;
-  $('#report').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const report = $('#report');
+  report.hidden = false;
+  report.classList.remove('stale', 'flash');
+  $('#report-stale').hidden = true;
+  void report.offsetWidth; // reinicia la animación aunque el resultado sea igual al anterior
+  report.classList.add('flash');
+  report.scrollIntoView({ behavior: 'smooth', block: 'start' });
   lastReport = { meta, input, found, unknownCodes };
 }
 
@@ -357,10 +362,17 @@ $('#form').addEventListener('reset', () => {
   lastReport = null;
   setTimeout(() => { applyPrefs(); previewLambda(); });
 });
-$('#form').addEventListener('input', previewLambda);
+// Si se editan los datos después de diagnosticar, el resultado queda desactualizado.
+function markReportStale() {
+  if ($('#report').hidden) return;
+  $('#report').classList.add('stale');
+  $('#report-stale').hidden = false;
+}
+$('#form').addEventListener('input', () => { previewLambda(); markReportStale(); });
 $('#form').addEventListener('change', (e) => {
   if (PREF_FIELDS.includes(e.target.name)) savePrefs();
   previewLambda();
+  markReportStale();
 });
 $('#print-btn').addEventListener('click', () => window.print());
 $('#share-btn').addEventListener('click', share);
