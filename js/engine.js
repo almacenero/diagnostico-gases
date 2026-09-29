@@ -47,6 +47,13 @@ export function calcLambda({ CO, CO2, O2, HC }, { Hcv, Ocv }) {
   return num / den;
 }
 
+// Lambda como lo muestra y evalúa la app: 3 decimales. Los bordes de las reglas
+// base (p. ej. 0,9699 / 0,97) están pensados para este redondeo.
+export function lambdaForRules(values, fuel) {
+  const l = calcLambda(values, fuel);
+  return l == null ? null : Math.round(l * 1000) / 1000;
+}
+
 // Convierte filas crudas (del Excel) en reglas válidas. Devuelve también los
 // errores por fila para mostrárselos al usuario.
 export function normalizeRules(rows, sheetName = 'Reglas') {

@@ -1,5 +1,5 @@
 import { COMBUSTIBLES, DEFAULT_RULES, GASES } from './rules.js';
-import { calcLambda, diagnose, readRulesFile, toNumber, toRuleUnit } from './engine.js';
+import { diagnose, lambdaForRules, readRulesFile, toNumber, toRuleUnit } from './engine.js';
 import { activate, checkLicense } from './license.js';
 import { buildWorkbook } from './template.js';
 
@@ -47,8 +47,11 @@ function renderGasInputs() {
 // Combustible y unidades elegidas se recuerdan entre usos.
 const PREF_FIELDS = ['combustible', ...GASES.filter((g) => g.alt).map((g) => `${g.key}_unit`)];
 
+// El analizador del cliente entrega el CO en ppm (0–10 000 ppm).
+const DEFAULT_PREFS = { CO_unit: 'ppm' };
+
 function applyPrefs() {
-  const prefs = load(STORE.prefs, {});
+  const prefs = { ...DEFAULT_PREFS, ...load(STORE.prefs, {}) };
   for (const name of PREF_FIELDS) {
     const el = $('#form').elements[name];
     if (prefs[name] && [...el.options].some((o) => o.value === prefs[name])) el.value = prefs[name];
@@ -63,19 +66,26 @@ function savePrefs() {
 function readForm() {
   const fd = new FormData($('#form'));
   const values = {};
-  for (const g of GASES) values[g.key] = toRuleUnit(g, toNumber(fd.get(g.key)), fd.get(`${g.key}_unit`));
+  const entered = {}; // valor y unidad tal como se ingresaron, para el reporte
+  for (const g of GASES) {
+    const unit = fd.get(`${g.key}_unit`) || g.unit;
+    const raw = toNumber(fd.get(g.key));
+    values[g.key] = toRuleUnit(g, raw, unit);
+    if (raw != null) entered[g.key] = { value: raw, unit };
+  }
   const combustible = COMBUSTIBLES.find((c) => c.key === fd.get('combustible')) || COMBUSTIBLES[0];
   // Si el equipo no entrega lambda, se calcula con la ecuación de Brettschneider.
   let lambdaCalculado = false;
   if (values.Lambda == null) {
-    const lambda = calcLambda(values, combustible);
+    const lambda = lambdaForRules(values, combustible);
     if (lambda != null) {
-      values.Lambda = Math.round(lambda * 1000) / 1000;
+      values.Lambda = lambda;
       lambdaCalculado = true;
     }
   }
   return {
     values,
+    entered,
     combustible,
     lambdaCalculado,
     codigos: String(fd.get('codigos') || ''),
@@ -86,6 +96,14 @@ function readForm() {
 }
 
 let lastReport = null;
+
+// "10000 ppm (1 %)" si se ingresó en la unidad alternativa; "13 %" si no.
+function readingText(g, input) {
+  if (g.key === 'Lambda') return `${input.values.Lambda}${input.lambdaCalculado ? ' (calculado)' : ''}`;
+  const e = input.entered[g.key];
+  const base = `${input.values[g.key]} ${g.unit}`.trim();
+  return e && e.unit !== g.unit ? `${e.value} ${e.unit} (${base})` : base;
+}
 
 function previewLambda() {
   const el = $('#form').elements.Lambda;
@@ -102,8 +120,7 @@ function renderReport(input) {
   $('#report-meta').textContent = meta;
 
   const chips = GASES.filter((g) => input.values[g.key] != null)
-    .map((g) => `<span class="chip">${g.label}: <strong>${input.values[g.key]}</strong> ${g.unit}${
-      g.key === 'Lambda' && input.lambdaCalculado ? ' (calculado)' : ''}</span>`);
+    .map((g) => `<span class="chip">${g.label}: <strong>${readingText(g, input)}</strong></span>`);
   const codes = input.codigos.trim();
   if (codes) chips.push(`<span class="chip">Códigos: <strong>${esc(codes.toUpperCase())}</strong></span>`);
   $('#report-values').innerHTML = chips.join('');
@@ -137,8 +154,7 @@ function reportAsText() {
   const taller = load(STORE.taller, '');
   const lines = [`*Diagnóstico de gases*${taller ? ` — ${taller}` : ''}`, meta, ''];
   const vals = GASES.filter((g) => input.values[g.key] != null)
-    .map((g) => `${g.key}: ${input.values[g.key]} ${g.unit}${
-      g.key === 'Lambda' && input.lambdaCalculado ? ' (calculado)' : ''}`.trim());
+    .map((g) => `${g.key}: ${readingText(g, input)}`);
   if (vals.length) lines.push(vals.join(' | '), '');
   for (const r of found) {
     lines.push(`• ${r.diagnostico} (${r.severidad})`);

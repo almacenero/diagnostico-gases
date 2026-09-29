@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as XLSX from 'xlsx';
 import { COMBUSTIBLES, DEFAULT_RULES, GASES } from '../js/rules.js';
-import { calcLambda, diagnose, normalizeRules, toNumber, toRuleUnit } from '../js/engine.js';
+import { calcLambda, diagnose, lambdaForRules, normalizeRules, toNumber, toRuleUnit } from '../js/engine.js';
 
 const ids = (r) => r.found.map((x) => x.id);
 
@@ -25,9 +25,20 @@ const CASOS = [
   ['ligeramente pobre', { CO: 0.6, HC: 90, CO2: 13.5, O2: 1.3 }, ['R14']],
 ];
 
+// Casos dentro del rango del analizador del cliente (CO 0–10 000 ppm, HC 0–1000 ppm).
+const ppm = (co) => co / 10000;
+CASOS.push(
+  ['equipo: CO en el tope con mezcla rica no se confunde con catalizador', { CO: ppm(10000), HC: 200, CO2: 13, O2: 0.2 }, ['R16']],
+  ['equipo: HC en el tope con falla de encendido', { CO: ppm(6000), HC: 1000, CO2: 11, O2: 4 }, ['R07', 'R17']],
+  ['equipo: CO 4950 ppm cae en una regla (sin huecos entre 0,49 y 0,5)', { CO: ppm(4950), HC: 350, CO2: 12, O2: 2.5 }, ['R08']],
+  ['equipo: λ = 0,970 pertenece a una sola regla (no a "ligeramente rica" a la vez)', { CO: ppm(9500), HC: 150, CO2: 13.5, O2: 0.1 }, ['R02']],
+  ['equipo: CO en el tope con λ 0,970 no se marca además como ligeramente rica', { CO: ppm(10000), HC: 200, CO2: 13, O2: 0.2 }, ['R16']],
+  ['equipo: 5000 ppm exactos no dan correcta y catalizador a la vez', { CO: ppm(5000), HC: 40, CO2: 14.8, O2: 0.4 }, ['R01']],
+);
+
 for (const [nombre, v, esperado] of CASOS) {
   test(`reglas base: ${nombre}`, () => {
-    const values = { ...v, Lambda: calcLambda(v, COMBUSTIBLES[0]) };
+    const values = { ...v, Lambda: lambdaForRules(v, COMBUSTIBLES[0]) };
     assert.deepEqual(ids(diagnose(DEFAULT_RULES, values, '')), esperado);
   });
 }

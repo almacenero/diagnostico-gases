@@ -17,6 +17,38 @@ ajustarlas o ampliarlas cargando su propio Excel.
 - Para GLP y GNC el cálculo de lambda sí se ajusta al combustible, pero los
   umbrales de CO y HC son los de gasolina.
 
+## Equipo del cliente
+
+El equipo que vende el cliente es un detector portátil con bomba de succión
+("Pump-suction Four-in-One Gas Detector", marca HIREP según los videos de
+demostración) configurado con estos rangos:
+
+| Gas | Rango |
+|---|---|
+| CO | 0 – 10 000 ppm (0 – 1 %) |
+| CO₂ | 0 – 20 % vol |
+| HC | 0 – 1000 ppm |
+| O₂ | 0 – 21 % vol |
+
+No mide NOx, por lo que la regla R13 no aplica con este equipo. Por eso la app
+trae el CO en ppm por defecto.
+
+**Consecuencias para el diagnóstico:**
+
+- Una mezcla rica suele producir entre 1 y 10 % de CO, y este equipo **se satura
+  en 1 %**. Con la lectura en 10 000 ppm, la regla R16 avisa que el CO real puede
+  ser mayor y que la mezcla probablemente es rica. En ese caso el lambda
+  calculado sale más cercano a 1 de lo real, y la regla de catalizador no se
+  aplica.
+- El HC se satura en 1000 ppm. Con la lectura en el tope, la regla R17 avisa que
+  el valor real puede ser mayor, lo que es típico de una falla de encendido.
+- Para la norma INEN 2204, el rango alcanza a verificar los límites de vehículos
+  2000 y posteriores (CO 1 %, HC 200 ppm), pero no los de vehículos más antiguos
+  (CO hasta 6,5 %, HC hasta 1200 ppm).
+- Antes de medir, el fabricante indica esperar unos 100 segundos de
+  calentamiento y hacer la calibración de cero **en aire limpio**, lejos de
+  autos encendidos.
+
 ## Valores de referencia
 
 **Motor y catalizador en buen estado, ralentí** (Walker Exhaust, *Five Gas Diagnostic Chart*):
@@ -65,29 +97,32 @@ cada gas en cada falla:
 ## Reglas
 
 Una regla aplica cuando se cumplen **todas** sus condiciones. Si una regla usa
-un gas que no se midió, no aplica. Las filas con el mismo diagnóstico (R06/R06B,
-R07/R07B, R02/R03) son alternativas: si se cumple cualquiera, el diagnóstico se
+un gas que no se midió, no aplica. Las filas con el mismo diagnóstico (R02/R02B/R03,
+R06/R06B, R07/R07B) son alternativas: si se cumple cualquiera, el diagnóstico se
 muestra una sola vez. Los resultados se ordenan por severidad.
 
 | Id | Diagnóstico | Severidad | Condiciones |
 |---|---|---|---|
 | R01 | Combustión correcta | Baja | CO ≤ 0,5 · HC ≤ 100 · CO₂ ≥ 12,5 · 0,97 ≤ λ ≤ 1,03 |
-| R02 | Catalizador con baja eficiencia | Media | 0,51 ≤ CO ≤ 3 · HC ≤ 400 · CO₂ ≥ 12 · 0,97 ≤ λ ≤ 1,03 |
-| R03 | Catalizador con baja eficiencia | Media | CO ≤ 0,5 · 101 ≤ HC ≤ 400 · CO₂ ≥ 12 · 0,97 ≤ λ ≤ 1,03 |
-| R04 | Mezcla rica | Media | 1 ≤ CO ≤ 2,99 · λ ≤ 0,97 |
+| R02 | Catalizador con baja eficiencia | Media | 0,5 ≤ CO ≤ 0,9999 · HC ≤ 400 · CO₂ ≥ 12 · 0,97 ≤ λ ≤ 1,03 |
+| R02B | Catalizador con baja eficiencia | Media | 1,0001 ≤ CO ≤ 3 · HC ≤ 400 · CO₂ ≥ 12 · 0,97 ≤ λ ≤ 1,03 |
+| R03 | Catalizador con baja eficiencia | Media | CO ≤ 0,5 · 100 ≤ HC ≤ 400 · CO₂ ≥ 12 · 0,97 ≤ λ ≤ 1,03 |
+| R04 | Mezcla rica | Media | 1 ≤ CO ≤ 3 · λ ≤ 0,97 |
 | R05 | Mezcla muy rica | Alta | CO ≥ 3 · λ ≤ 0,97 |
-| R06 | Mezcla pobre | Media | CO ≤ 0,99 · HC ≤ 299 · O₂ ≥ 2 |
-| R06B | Mezcla pobre | Media | CO ≤ 0,99 · HC ≤ 299 · λ ≥ 1,05 |
+| R06 | Mezcla pobre | Media | CO ≤ 1 · HC ≤ 300 · O₂ ≥ 2 |
+| R06B | Mezcla pobre | Media | CO ≤ 1 · HC ≤ 300 · λ ≥ 1,05 |
 | R07 | Falla de encendido (cilindro que no quema) | Alta | CO ≥ 0,5 · HC ≥ 300 · O₂ ≥ 2 |
-| R07B | Falla de encendido (cilindro que no quema) | Alta | CO ≥ 1,51 · HC ≥ 300 · O₂ ≥ 1 |
-| R08 | Falla por mezcla muy pobre | Alta | CO ≤ 0,49 · HC ≥ 300 · O₂ ≥ 2 |
-| R09 | HC alto sin problema de mezcla: compresión, aceite o puesta a punto | Media | CO ≤ 1,5 · HC ≥ 300 · O₂ ≤ 1,99 |
-| R10 | CO y O₂ altos a la vez | Media | CO ≥ 1 · HC ≤ 299 · O₂ ≥ 2 |
+| R07B | Falla de encendido (cilindro que no quema) | Alta | CO ≥ 1,5 · HC ≥ 300 · O₂ ≥ 1 |
+| R08 | Falla por mezcla muy pobre | Alta | CO ≤ 0,5 · HC ≥ 300 · O₂ ≥ 2 |
+| R09 | HC alto sin problema de mezcla: compresión, aceite o puesta a punto | Media | CO ≤ 1,5 · HC ≥ 300 · O₂ ≤ 2 |
+| R10 | CO y O₂ altos a la vez | Media | CO ≥ 1 · HC ≤ 300 · O₂ ≥ 2 |
 | R11 | Muestra diluida: prueba no válida | Alta | HC ≤ 300 · CO₂ ≤ 10 · O₂ ≥ 4 |
-| R12 | Combustión ineficiente (CO₂ bajo) | Media | CO₂ ≤ 12,49 · 0,97 ≤ λ ≤ 1,03 |
+| R12 | Combustión ineficiente (CO₂ bajo) | Media | CO₂ ≤ 12,5 · 0,97 ≤ λ ≤ 1,03 |
 | R13 | NOx elevado (temperatura de combustión alta) | Media | NOx ≥ 1000 |
-| R14 | Mezcla ligeramente pobre | Baja | CO ≤ 1 · HC ≤ 300 · 1,031 ≤ λ ≤ 1,049 |
-| R15 | Mezcla ligeramente rica | Baja | CO ≤ 0,99 · O₂ ≤ 1,5 · 0,95 ≤ λ ≤ 0,969 |
+| R14 | Mezcla ligeramente pobre | Baja | CO ≤ 1 · HC ≤ 300 · 1,03 ≤ λ ≤ 1,05 |
+| R15 | Mezcla ligeramente rica | Baja | CO ≤ 1 · O₂ ≤ 1,5 · 0,95 ≤ λ ≤ 0,97 |
+| R16 | CO en el máximo del equipo (10 000 ppm) | Alta | CO = 1 |
+| R17 | HC en el máximo del equipo (1000 ppm) | Alta | HC = 1000 |
 
 Las causas y recomendaciones de cada regla están en `js/rules.js` y en la
 plantilla Excel.
@@ -109,7 +144,7 @@ Con O₂ bajo, lambda decide: bajo 0,97 es rica (R04, R05 o R15), entre 0,97 y
 
 ## Validación
 
-`tests/engine.test.js` incluye 14 casos típicos, uno por cada falla, y comprueba
+`tests/engine.test.js` incluye 18 casos: 14 típicos, uno por cada falla, y 4 dentro del rango del equipo del cliente (topes de CO y HC, y los bordes entre reglas). Comprueba
 que cada uno produce exactamente el diagnóstico esperado. Uno de ellos es el
 ejemplo del Excel del cliente (CO₂ 7 %, O₂ 5 %, CO 250 ppm, HC 500 ppm):
 λ = 1,424, que da **Falla por mezcla muy pobre**.
@@ -118,6 +153,9 @@ También se generaron 20 000 combinaciones al azar de CO (0–6 %), HC (0–1500
 CO₂ (6–15,5 %) y O₂ (0–8 %), y el 99,7 % recibe al menos un diagnóstico. Las que
 quedan sin diagnóstico son combinaciones físicamente improbables, como CO 3 %
 con HC 5 ppm. En ese caso la app avisa que ninguna regla coincide.
+
+Dentro del rango del equipo del cliente (CO 0–10 000 ppm, HC 0–1000 ppm), un barrido
+de 20 000 combinaciones da diagnóstico al 99,96 %.
 
 ## Limitaciones
 
