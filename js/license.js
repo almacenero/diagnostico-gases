@@ -79,6 +79,16 @@ async function fetchStatus() {
   }
 }
 
+// Interpreta lo que el usuario pega en la pantalla de licencia: acepta el código,
+// el enlace de activación completo o el código partido en varias líneas (WhatsApp).
+// Detecta cuando pegan el número de licencia (L-XXXXXXXX) en lugar del código.
+export function parseLicenseInput(text) {
+  const t = String(text || '').trim();
+  if (/^L-[0-9A-F]{8}$/i.test(t)) return { error: 'es-el-numero' };
+  const fromLink = t.match(/lic=([\w.\s-]+)/);
+  return { token: (fromLink ? fromLink[1] : t).replace(/\s+/g, '') };
+}
+
 // Guarda un código nuevo si es válido. Devuelve la licencia o null.
 export async function activate(token) {
   const lic = await verifyToken(token);

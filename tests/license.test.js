@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as crypto from 'node:crypto';
-import { effectiveNow, evaluateLicense, verifyToken } from '../js/license.js';
+import { effectiveNow, evaluateLicense, parseLicenseInput, verifyToken } from '../js/license.js';
 
 // Par de claves de prueba (no es la clave real de producción).
 const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
@@ -78,4 +78,19 @@ test('atrasar el reloj del dispositivo no revive una demo vencida', () => {
   const relojAtrasado = Date.parse('2026-10-05T09:00:00');
   const t = effectiveNow(relojAtrasado, maxSeen);
   assert.equal(evaluateLicense({ lic: demo, now: t, lastCheck: t }).reason, 'vencida');
+});
+
+test('pantalla de licencia: acepta código, enlace completo y código partido en líneas', async () => {
+  const token = sign(demo);
+  const link = `https://almacenero.github.io/diagnostico-gases/#lic=${token}`;
+  const partido = `${token.slice(0, 40)}\n${token.slice(40, 90)} ${token.slice(90)}`;
+  for (const entrada of [token, `  ${token}\n`, link, partido]) {
+    const { token: t } = parseLicenseInput(entrada);
+    assert.deepEqual(await verifyToken(t, jwk), demo, entrada.slice(0, 30));
+  }
+});
+
+test('pantalla de licencia: detecta que pegaron el número en vez del código', () => {
+  assert.deepEqual(parseLicenseInput('L-E10943E8'), { error: 'es-el-numero' });
+  assert.deepEqual(parseLicenseInput(' l-e10943e8 '), { error: 'es-el-numero' });
 });

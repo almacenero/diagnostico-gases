@@ -1,6 +1,6 @@
 import { COMBUSTIBLES, DEFAULT_RULES, GASES } from './rules.js';
 import { diagnose, lambdaForRules, readRulesFile, toNumber, toRuleUnit } from './engine.js';
-import { activate, checkLicense } from './license.js';
+import { activate, checkLicense, parseLicenseInput } from './license.js';
 import { buildWorkbook } from './template.js';
 
 const VERSION = 'v1.2.0';
@@ -313,7 +313,12 @@ async function startLicense() {
     if (await consumeLicenseLink()) await refreshLicense();
   });
   $('#lock-activate').addEventListener('click', async () => {
-    if (!(await activate($('#lock-code').value))) {
+    const input = parseLicenseInput($('#lock-code').value);
+    if (input.error === 'es-el-numero') {
+      showLockError('Eso es el número de la licencia, no el código. El código es un texto largo que empieza con "eyJ". Pídalo a su proveedor o use el enlace de activación.');
+      return;
+    }
+    if (!(await activate(input.token))) {
       showLockError('Código no válido. Revise que lo haya copiado completo.');
       return;
     }
